@@ -195,7 +195,6 @@ inline long getTiempoEfectivo(int32_t tiempoBase, uint8_t penalty) {
 
 void setup() {
   pinMode(TFT_BL_PIN, OUTPUT);
-  digitalWrite(TFT_BL_PIN, HIGH);
   pinMode(SENSOR_PIN, INPUT);
 
   tft.init();
@@ -203,6 +202,8 @@ void setup() {
   //tft.setRotation(1);
   //uint16_t calData[5] = { 229, 3433, 369, 3383, 1 };
   tft.setRotation(3);
+  digitalWrite(TFT_BL_PIN, HIGH);
+  drawIntroMessage();
   uint16_t calData[5] = { 210, 3456, 371, 3387, 7 };
   //uint16_t calData[5];
   //tft.calibrateTouch(calData, TFT_WIHTE, TFT_BLACK, 15);
@@ -216,12 +217,13 @@ void setup() {
   sdSPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
   sdDisponible = SD.begin(SD_CS, sdSPI, 25000000);
 
-  tft.fillScreen(TFT_BLACK);
   std::srand(esp_random());
 
   loadSettings();
   loadSession();
   mezcla = generarMezcla();
+
+  delay(1200);
 
   drawBasic();
   drawTimer();
@@ -1554,6 +1556,16 @@ void formatearTiempoAO(int32_t ms, char* buffer, size_t len) {
       snprintf(buffer, len, "%lu.%02lu", segundos, centesimas);
     }
   }
+}
+
+void drawIntroMessage() {
+  tft.fillScreen(TFT_BLACK);
+  tft.drawRect(0, 0, 320, 240, TFT_WHITE);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextSize(4);
+  tft.drawCentreString("PocketTimer", 160, 90, 1);
+  tft.setTextSize(2);
+  tft.drawCentreString("by Vic", 160, 140, 1);
 }
 
 void drawMezcla() {

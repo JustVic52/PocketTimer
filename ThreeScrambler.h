@@ -6,6 +6,7 @@
 class ThreeScrambler {
 public:
     static std::string scramble();
+    static int* visualize(std::string scramble);
 };
 
 #endif
