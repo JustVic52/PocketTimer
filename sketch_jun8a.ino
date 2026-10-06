@@ -627,21 +627,29 @@ void loop() {
 
   // Lectura del sensor para el Timer
   bool tocadoSensor = (digitalRead(SENSOR_PIN) == HIGH) && pantallaActual == 1;
+  static uint8_t subEstadoMano = 0;
+  static bool sensorPresionadoInicioInsp = false;
 
   switch (estado) {
     case DETENIDO:
-      if (tocadoSensor && (millis() > debounceFinTimer)) {
-        if (inspection) {
+      if (inspection) {
+        if (tocadoSensor && (millis() > debounceFinTimer)) {
+          sensorPresionadoInicioInsp = true;
+        } else if (!tocadoSensor && sensorPresionadoInicioInsp) {
+          sensorPresionadoInicioInsp = false;
           estado = INSPECCION;
           tiempoInicioInspeccion = millis();
           penaltyInspeccion = 0;
           ultimoSegundoPintado = -99;
+          subEstadoMano = 0;
           drawInspection(0);
-          debounceFinTimer = millis() + 300;
-        } else {
+          debounceFinTimer = millis() + 200;
+        }
+      } else {
+        if (tocadoSensor && (millis() > debounceFinTimer)) {
           tiempoMano = millis();
           estado = ESPERANDO;
-          mostrarTiempo(tiempoEnPantalla); // Rojo
+          mostrarTiempo(tiempoEnPantalla);
         }
       }
       break;
@@ -658,7 +666,7 @@ void loop() {
         imprimirAlgoritmo(mezcla);
 
         registrarTiempo(0);
-        actualizarRegistro(2); // DNF
+        actualizarRegistro(2);
         mostrarTiempo(-1);
         break;
       }
@@ -669,28 +677,50 @@ void loop() {
 
       drawInspection(tInsp);
 
-      if (tocadoSensor && (millis() > debounceFinTimer)) {
-        tiempoMano = millis();
-        estado = ESPERANDO;
-        mostrarTiempo(tiempoEnPantalla);
+      if (!tocadoSensor) {
+        if (subEstadoMano == 2) {
+          tiempoInicio = millis();
+          imprimirAlgoritmo(mezcla);
+          subEstadoMano = 0;
+          estado = CORRIENDO;
+          break;
+        } else if (subEstadoMano == 1) {
+          subEstadoMano = 0;
+          mostrarTiempo(tiempoEnPantalla);
+        }
+      } 
+      else if (millis() > debounceFinTimer) {
+        if (subEstadoMano == 0) {
+          subEstadoMano = 1;
+          tiempoMano = millis();
+          estado = ESPERANDO;
+          mostrarTiempo(tiempoEnPantalla);
+          estado = INSPECCION;
+        } else if (subEstadoMano == 1) {
+          if (millis() - tiempoMano >= 500) {
+            subEstadoMano = 2;
+            estado = PREPARADO;
+            mostrarTiempo(tiempoEnPantalla);
+            estado = INSPECCION;
+          }
+        }
       }
       break;
     }
 
     case ESPERANDO:
       if (!tocadoSensor) {
-        estado = inspection ? INSPECCION : DETENIDO;
-        mostrarTiempo(tiempoEnPantalla); // Blanco
+        estado = DETENIDO;
+        mostrarTiempo(tiempoEnPantalla);
       } else if (millis() - tiempoMano >= 500) {
         estado = PREPARADO;
-        mostrarTiempo(tiempoEnPantalla); // Verde
+        mostrarTiempo(tiempoEnPantalla);
       }
       break;
 
     case PREPARADO:
       if (!tocadoSensor) {
         tiempoInicio = millis();
-        if (inspection) imprimirAlgoritmo(mezcla);
         estado = CORRIENDO;
       }
       break;
@@ -711,13 +741,11 @@ void loop() {
         if (tocadoPantalla) {
           tiempoTranscurrido = 0;
           mostrarTiempo(tiempoTranscurrido);
-        }
-        else {
+        } else {
           registrarTiempo(tiempoTranscurrido);
           if (inspection && penaltyInspeccion == 1) {
             actualizarRegistro(1);
           }
-
           mostrarTiempo(getTiempoEfectivo(ultimaSolve.tiempo, ultimaSolve.penalty));
         }
       }
